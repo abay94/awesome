@@ -111,9 +111,15 @@ defmodule Awesome.Context.JobServer do
     libs = Awesome.Repo.all(Lib)
 
     Enum.map(libs, fn (lib)->
-      case parse_lib_page(lib.link) do
-        :error_on_get -> :skip
-        {last_com_date, cnt_star} -> {last_com_date, cnt_star}
+      try do
+        case parse_lib_page(lib.link) do
+          :error_on_get -> :skip
+          {last_com_date, cnt_star} -> {last_com_date, cnt_star}
+        end
+      rescue
+        smthng_wrong ->
+          IO.inspect smthng_wrong
+          :error_on_parsing
       end
     end)
 
@@ -205,16 +211,17 @@ def group_all_libs(content) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, body} = Floki.parse_document(body)
         :timer.sleep(500)
-#        all_date = Floki.find(body,"Box-header Box-header--blue position-relative, div")
-        all_date = Floki.find(body,"#files a")
-        IO.inspect all_date
+        all_date = Floki.find(body,"f6 link-gray text-mono ml-2 d-none d-lg-inline, a")
         [{_,[{_,date}|_],_}|_] = Floki.find(all_date,"relative-time")
         [{_,_,[cnt_star]}] = Floki.find(body,".js-social-count")
-#        {:ok,dt,time_zone} = DateTime.from_iso8601(date)
-#        dt_now =  DateTime.now("Etc/UTC")
-#        diff_seconds = DateTime.diff(dt_now,dt)
-        IO.inspect date
+        {:ok,dt,_time_zone} = DateTime.from_iso8601(date)
+        {:ok,dt_now} =  DateTime.now("Etc/UTC")
+        diff_seconds = DateTime.diff(dt_now,dt,:second)
+        [cnt_star_str] = Regex.run(~r"\d+",cnt_star)
+        {cnt_star,_} = Integer.parse(cnt_star_str)
+        days = floor(diff_seconds/60/60/24)
         IO.inspect cnt_star
+        IO.inspect days
         {:ok,:ok}
 
       {:ok, %HTTPoison.Response{status_code: 301, body: body}} ->
