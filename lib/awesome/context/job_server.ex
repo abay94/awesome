@@ -112,9 +112,8 @@ defmodule Awesome.Context.JobServer do
   def handle_cast(:update_libs_rest, _) do
     libs = Awesome.Repo.all(Lib)
 
-    credentials = "abay94:b19937049858682dca25d27f8cc393258136f251" |> Base.encode64()
 
-    header = ["Authorization": "Basic #{credentials}"]
+    header = []
     for lib <- libs do
       case parse_lib_page(lib, header) do
         {cnt_star, days} ->
