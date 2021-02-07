@@ -3,8 +3,11 @@ defmodule Awesome.Context.JobServer do
   alias Awesome.Context.Lib
   alias Awesome.Context.Group
 
+  import Ecto.Query
+
 
   @update_time 5000
+  @next_update 600000
   @awesome_link "https://github.com/h4cc/awesome-elixir/blob/master/README.md"
   @article_tag_class "markdown-body entry-content container-lg, article"
 
@@ -107,21 +110,27 @@ defmodule Awesome.Context.JobServer do
 
 
   def handle_cast(:update_libs_rest, _) do
-
     libs = Awesome.Repo.all(Lib)
 
-    Enum.map(libs, fn (lib)->
-      try do
-        case parse_lib_page(lib.link) do
-          :error_on_get -> :skip
-          {last_com_date, cnt_star} -> {last_com_date, cnt_star}
-        end
-      rescue
-        smthng_wrong ->
-          IO.inspect smthng_wrong
-          :error_on_parsing
+    credentials = "abay94:b19937049858682dca25d27f8cc393258136f251" |> Base.encode64()
+
+    header = ["Authorization": "Basic #{credentials}"]
+    for lib <- libs do
+      case parse_lib_page(lib, header) do
+        {cnt_star, days} ->
+          case Awesome.Repo.get_by(Lib, %{name: lib.name}) do
+            lib_got ->
+                if (lib_got.cnt_days == days) and (lib_got.cnt_star == cnt_star) do
+                  :do_nothing
+                else
+                  lib_got
+                  |> Ecto.Changeset.change(%{cnt_days: days, cnt_star: cnt_star})
+                  |> Awesome.Repo.update()
+                end
+          end
+        _ -> :do_nothing
       end
-    end)
+    end
 
     {:noreply, :no_state}
   end
@@ -143,7 +152,7 @@ defmodule Awesome.Context.JobServer do
 
   def loop_update_libs_rest do
     GenServer.cast(__MODULE__, :update_libs_rest)
-    Process.send_after(self(), :update_groups, @update_time)
+    Process.send_after(self(), :update_groups, @next_update)
   end
 
 ## ---------------------------------
@@ -206,35 +215,34 @@ def group_all_libs(content) do
 
   end
 
-  def parse_lib_page(link) do
-    case HTTPoison.get(link) do
-      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        {:ok, body} = Floki.parse_document(body)
-        :timer.sleep(500)
-        all_date = Floki.find(body,"f6 link-gray text-mono ml-2 d-none d-lg-inline, a")
-        [{_,[{_,date}|_],_}|_] = Floki.find(all_date,"relative-time")
-        [{_,_,[cnt_star]}] = Floki.find(body,".js-social-count")
-        {:ok,dt,_time_zone} = DateTime.from_iso8601(date)
-        {:ok,dt_now} =  DateTime.now("Etc/UTC")
-        diff_seconds = DateTime.diff(dt_now,dt,:second)
-        [cnt_star_str] = Regex.run(~r"\d+",cnt_star)
-        {cnt_star,_} = Integer.parse(cnt_star_str)
-        days = floor(diff_seconds/60/60/24)
-        IO.inspect cnt_star
-        IO.inspect days
-        {:ok,:ok}
+def parse_lib_page(lib,header) do
+  link = "https://api.github.com/search/repositories?q=" <> lib.name <> "+in%3Aname%2Cdescription+language%3AElixir+language%3AErlang"
+  case HTTPoison.request(:get, link, "", ["Accept": "application/vnd.github.v3+json"] ++ header, []) do
+    {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+      IO.inspect lib.name
+      :timer.sleep(3000)
+      {_, body_map} = Jason.decode(body)
+      [found_lib|_] = body_map["items"]
+      full_name = found_lib["full_name"]
 
-      {:ok, %HTTPoison.Response{status_code: 301, body: body}} ->
-        {:ok, body} = Floki.parse_document(body)
-        [{_,[{_,redirect}],_}] = Floki.find(body,"a")
-        parse_lib_page(redirect)
-
-      other ->
-        IO.inspect other
-        :error_on_get
-    end
-
+      date = found_lib["updated_at"]
+      {:ok,dt,_time_zone} = DateTime.from_iso8601(date)
+      {:ok,dt_now} =  DateTime.now("Etc/UTC")
+      diff_seconds = DateTime.diff(dt_now,dt,:second)
+      cnt_star = found_lib["stargazers_count"]
+      days = floor(diff_seconds/60/60/24)
+      IO.inspect "date and star"
+      IO.inspect full_name
+      IO.inspect days
+      IO.inspect cnt_star
+      IO.inspect "________________________"
+      {cnt_star, days}
+    {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
+      IO.inspect status_code
+      IO.inspect body
+      status_code
   end
+end
 
 
 end
