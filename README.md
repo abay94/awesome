@@ -1,5 +1,6 @@
 # Awesome
 
+Before starting an app, add a credentials( for BasicAuth "username:token_genrated") to get a resource of GitApi in config/config.exs line:12
 To start your Phoenix server:
 
   * Install dependencies with `mix deps.get`
