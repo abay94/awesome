@@ -226,10 +226,8 @@ def parse_lib_page(lib,header) do
   try do
     case HTTPoison.request(:get, link, "", ["Accept": "application/vnd.github.v3+json"] ++ header, []) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        IO.inspect lib.name
         {_, body_map} = Jason.decode(body)
         [found_lib|_] = body_map["items"]
-        full_name = found_lib["full_name"]
 
         date = found_lib["updated_at"]
         {:ok,dt,_time_zone} = DateTime.from_iso8601(date)
@@ -237,14 +235,8 @@ def parse_lib_page(lib,header) do
         diff_seconds = DateTime.diff(dt_now,dt,:second)
         cnt_star = found_lib["stargazers_count"]
         days = floor(diff_seconds/60/60/24)
-        IO.inspect "date and star"
-        IO.inspect full_name
-        IO.inspect days
-        IO.inspect cnt_star
-        IO.inspect "________________________"
         {cnt_star, days}
       {:ok, %HTTPoison.Response{status_code: status_code}} ->
-        IO.inspect status_code
         status_code
     end
     rescue
