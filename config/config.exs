@@ -8,7 +8,8 @@
 use Mix.Config
 
 config :awesome,
-  ecto_repos: [Awesome.Repo]
+  ecto_repos: [Awesome.Repo],
+  gitapi_credentials: nil   # "user:token_generated"
 
 # Configures the endpoint
 config :awesome, AwesomeWeb.Endpoint,

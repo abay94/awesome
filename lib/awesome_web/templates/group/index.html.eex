@@ -1,21 +1,24 @@
-<h1>Listing Groups</h1>
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
+<div class="Box-body px-5 pb-5">
+  <h1> Awesome Elixir </h1>
+  <p>A curated list of amazingly awesome Elixir libraries, resources, and shiny things inspired by </p>
+  <ul>
+      <%= for group <- @groups do %>
+            <li> <a href="<%= group.anchor %>"><%= group.name %> </a>></li>
 
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-<%= for group <- @groups do %>
-    <tr>
-      <td><%= group.name %></td>
+      <% end %>
+    <h1> Libs </h1>
+        <%= for group <- @groups do %>
+            <h2> <a class="anchor"  href="<%= group.anchor %>" > </a>>
+               <%= group.name %>
+            </h2>
+            <p><%= raw(group.description) %> </p>
+            <%= for lib <- group.lib do %>
+                <%= raw(lib.description)  %>
+                    ⭐ - <%= lib.cnt_star  %> 🗓 - <%= lib.cnt_days  %>
+                  <% end %>
+      <% end %>
+     </ul>
+</div>
 
-
-    </tr>
-<% end %>
-  </tbody>
-</table>
 

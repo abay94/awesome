@@ -8,10 +8,23 @@ defmodule Awesome.Context do
 
 
   def list_groups(params) do
-    IO.puts Enum.map_join(params, ", ", fn {key, val} -> ~s{"#{key}", "#{val}"} end)
-    Group
-    |> Repo.all()
-    |> Repo.preload(:lib)
+    IO.inspect params
+    min_stars =
+      case params["min_stars"] do
+        nil -> 0
+        cnt ->
+          case Integer.parse(cnt) do
+            :error -> 0
+            {got_cnt,_} -> got_cnt
+          end
+      end
+    query =
+      from g in Group,
+      join: l in assoc(g, :lib),
+      where: l.cnt_star > ^min_stars,
+      preload: [lib: l]
+
+    Repo.all(query)
   end
 
 

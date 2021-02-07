@@ -3,8 +3,6 @@ defmodule Awesome.Context.JobServer do
   alias Awesome.Context.Lib
   alias Awesome.Context.Group
 
-  import Ecto.Query
-
 
   @update_time 5000
   @next_update 600000
@@ -112,8 +110,16 @@ defmodule Awesome.Context.JobServer do
   def handle_cast(:update_libs_rest, _) do
     libs = Awesome.Repo.all(Lib)
 
+    header =
+      case Application.get_env :awesome, :gitapi_credentials do
+        nil -> []
+        credentials ->
+          encoded =
+            credentials
+            |> Base.encode64()
+          ["Authorization": "Basic #{encoded}"]
+      end
 
-    header = []
     for lib <- libs do
       case parse_lib_page(lib, header) do
         {cnt_star, days} ->
@@ -216,30 +222,33 @@ def group_all_libs(content) do
 
 def parse_lib_page(lib,header) do
   link = "https://api.github.com/search/repositories?q=" <> lib.name <> "+in%3Aname%2Cdescription+language%3AElixir+language%3AErlang"
-  case HTTPoison.request(:get, link, "", ["Accept": "application/vnd.github.v3+json"] ++ header, []) do
-    {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-      IO.inspect lib.name
-      :timer.sleep(3000)
-      {_, body_map} = Jason.decode(body)
-      [found_lib|_] = body_map["items"]
-      full_name = found_lib["full_name"]
+  :timer.sleep(3000)
+  try do
+    case HTTPoison.request(:get, link, "", ["Accept": "application/vnd.github.v3+json"] ++ header, []) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        IO.inspect lib.name
+        {_, body_map} = Jason.decode(body)
+        [found_lib|_] = body_map["items"]
+        full_name = found_lib["full_name"]
 
-      date = found_lib["updated_at"]
-      {:ok,dt,_time_zone} = DateTime.from_iso8601(date)
-      {:ok,dt_now} =  DateTime.now("Etc/UTC")
-      diff_seconds = DateTime.diff(dt_now,dt,:second)
-      cnt_star = found_lib["stargazers_count"]
-      days = floor(diff_seconds/60/60/24)
-      IO.inspect "date and star"
-      IO.inspect full_name
-      IO.inspect days
-      IO.inspect cnt_star
-      IO.inspect "________________________"
-      {cnt_star, days}
-    {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
-      IO.inspect status_code
-      IO.inspect body
-      status_code
+        date = found_lib["updated_at"]
+        {:ok,dt,_time_zone} = DateTime.from_iso8601(date)
+        {:ok,dt_now} =  DateTime.now("Etc/UTC")
+        diff_seconds = DateTime.diff(dt_now,dt,:second)
+        cnt_star = found_lib["stargazers_count"]
+        days = floor(diff_seconds/60/60/24)
+        IO.inspect "date and star"
+        IO.inspect full_name
+        IO.inspect days
+        IO.inspect cnt_star
+        IO.inspect "________________________"
+        {cnt_star, days}
+      {:ok, %HTTPoison.Response{status_code: status_code}} ->
+        IO.inspect status_code
+        status_code
+    end
+    rescue
+      _ -> :error_on_request
   end
 end
 
