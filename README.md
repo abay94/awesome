@@ -1,5 +1,6 @@
 # Awesome
 
+Before starting an app, add a credentials( for BasicAuth "username:token_genrated") to get a resource of GitApi in config/config.exs line:12
 To start your Phoenix server:
 
   * Install dependencies with `mix deps.get`
@@ -18,3 +19,5 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
   * Docs: https://hexdocs.pm/phoenix
   * Forum: https://elixirforum.com/c/phoenix-forum
   * Source: https://github.com/phoenixframework/phoenix
+  
+![caption](link to image / GIF)
