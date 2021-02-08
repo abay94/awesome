@@ -4,12 +4,12 @@
   <p>A curated list of amazingly awesome Elixir libraries, resources, and shiny things inspired by </p>
   <ul>
       <%= for group <- @groups do %>
-            <li> <a href="<%= group.anchor %>"><%= group.name %> </a>></li>
+            <li> <a href="<%= group.anchor %>"> <%= group.name %> </a>></li>
 
       <% end %>
     <h1> Libs </h1>
         <%= for group <- @groups do %>
-            <h2> <a class="anchor"  href="<%= group.anchor %>" > </a>>
+            <h2> <a id="<%= String.slice(group.anchor, 1..-1) %>" > </a>
                <%= group.name %>
             </h2>
             <p><%= raw(group.description) %> </p>
